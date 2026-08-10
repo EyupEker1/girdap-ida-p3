@@ -120,3 +120,52 @@ def test_menzil_pinhole_dogru():
 def test_gecersiz_genislik_None():
     assert hm.menzil_genislikten(0.0, F416) is None
     assert hm.menzil_genislikten(-3.0, F416) is None
+
+
+# ══ TETİK: ne zaman / hangi hızda koşulacak ═══════════════════════════════
+from p3_hedef.tetik import P3Tetik, BEKLEME_HZ, AKTIF_HZ  # noqa: E402
+
+
+def test_baslangicta_bekleme_hizinda_ama_KOR_DEGIL():
+    """🔴 Sinyal gelmeden de bakıyoruz — 'yalnız PARKUR3'te çalış' dersek ve
+    sinyal hiç gelmezse (bugünkü durum) hedefi hiç aramayız."""
+    t = P3Tetik()
+    assert t.aktif is False
+    # 🪤 KENDİNE REFERANS TUZAĞI: `== BEKLEME_HZ` yazılırsa sabit 0 yapılsa bile
+    # test yeşil kalır (11.08 mutasyonu yakaladı). MUTLAK alt sınır konur:
+    # bekleme hızı 0 olursa sinyal gelmediğinde HİÇ bakmayız = kör kalırız.
+    assert t.hz(0.0) > 0.0, "bekleme hızı 0 olamaz — sinyalsizken kör kalırız"
+    assert 0.2 <= t.hz(0.0) <= 1.0
+
+
+def test_parkur3_duyulunca_aktif():
+    t = P3Tetik(); t.durum_geldi("PARKUR3", 1.0)
+    assert t.aktif and t.hz(1.0) == AKTIF_HZ and "PARKUR3" in t.gerekce
+
+
+def test_parkur1_2_aktiflestirmez():
+    t = P3Tetik()
+    t.durum_geldi("PARKUR1", 1.0); t.durum_geldi("PARKUR2", 2.0)
+    assert t.aktif is False
+
+
+def test_hedef_gorulurse_sinyalsiz_de_aktif():
+    """Karar tarafı hiç PARKUR3 demese bile: hedefi görüyorsak oradayız."""
+    t = P3Tetik(); t.kanit_geldi(5.0)
+    assert t.aktif and t.gerekce == "hedef_gorundu"
+
+
+def test_aktiflik_GERI_DONMEZ():
+    """Tek karelik durum bozulması tespiti susturmamalı — hedefe yaklaşırken
+    körleşmek angajmanı kaybettirir."""
+    t = P3Tetik(); t.durum_geldi("PARKUR3", 1.0); t.durum_geldi("PARKUR2", 2.0)
+    assert t.aktif and t.hz(2.0) == AKTIF_HZ
+
+
+def test_sinyal_kopuklugu_gorunur():
+    """Sahada SSH yok; sessiz kopukluk tek görünmez arızadır."""
+    t = P3Tetik()
+    assert t.sinyal_var_mi(0.0) is False
+    t.durum_geldi("PARKUR2", 10.0)
+    assert t.sinyal_var_mi(15.0) is True
+    assert t.sinyal_var_mi(40.0) is False
