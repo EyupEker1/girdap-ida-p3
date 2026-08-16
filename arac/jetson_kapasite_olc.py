@@ -222,6 +222,80 @@ def opencv_olc() -> None:
         bas(f"  olculemedi: {type(e).__name__}: {e}")
 
 
+# ─────────────────────── 4.5 PUANI SIFIRLAYAN KONTROLLER ───────────────────
+def puan_kontrolleri() -> list[str]:
+    """Kapasiteyle ilgisi YOK ama yapılmazsa puan sıfırlanır.
+
+    Hepsi sessiz arıza: sistem sağlıklı görünür, puan gelmez. Betik sadece
+    söylemekle kalmaz, **düzeltme komutunu da basar**.
+    """
+    baslik("4.5 PUANI SIFIRLAYAN KONTROLLER (kapasiteden bagimsiz)")
+    eksik: list[str] = []
+
+    # 1) Algı servisi etkin mi — yapılmazsa P1+P2 = 0, belirti vermeden
+    if shutil.which("systemctl"):
+        durum = kabuk("systemctl is-enabled girdap-algi 2>&1")
+        aktif = kabuk("systemctl is-active girdap-algi 2>&1")
+        if durum.startswith("enabled"):
+            bas(f"  ✅ girdap-algi: enabled / {aktif}")
+        else:
+            bas(f"  🔴 girdap-algi: {durum or '(yok)'} / {aktif}")
+            bas("     ⇒ YAPILMAZSA P1+P2 = 0. Duzeltme:")
+            bas("       sudo systemctl enable --now girdap-algi")
+            eksik.append("girdap-algi etkin degil")
+
+        # 2) Veri seti unit'i cihazda kaldıysa boot'ta tek OAK'ı kapar
+        vs = kabuk("systemctl list-unit-files 2>/dev/null | grep -i veriseti")
+        if vs:
+            bas(f"  🔴 girdap-veriseti unit'i HALA KURULU:\n      {vs}")
+            bas("     ⇒ Boot'ta kamerayi kapar, algi acilamaz. Duzeltme:")
+            bas("       sudo systemctl disable --now girdap-veriseti")
+            bas("       sudo rm /etc/systemd/system/girdap-veriseti.service")
+            bas("       sudo systemctl daemon-reload")
+            eksik.append("girdap-veriseti unit'i duruyor")
+        else:
+            bas("  ✅ girdap-veriseti unit'i yok")
+
+        # 3) Karar servisi
+        kd = kabuk("systemctl is-enabled girdap-karar 2>&1")
+        bas(f"  {'✅' if kd.startswith('enabled') else '🔴'} girdap-karar: {kd or '(yok)'}")
+        if not kd.startswith("enabled"):
+            eksik.append("girdap-karar etkin degil")
+
+    # 4) ROS_DOMAIN_ID — uyusmazsa iki taraf birbirini HIC gormez
+    dom = os.environ.get("ROS_DOMAIN_ID")
+    if dom == "42":
+        bas("  ✅ ROS_DOMAIN_ID=42")
+    else:
+        bas(f"  🔴 ROS_DOMAIN_ID={dom or '(bos)'} — 42 olmali")
+        bas("     ⇒ Uyusmazsa topic kesfi HIC calismaz (sessiz).")
+        bas("       echo 'export ROS_DOMAIN_ID=42' >> ~/.bashrc")
+        eksik.append("ROS_DOMAIN_ID yanlis")
+
+    # 5) Disk — Dosya-1/2/3 surekli yaziyor; dolarsa teslim eksik = 5 ceza
+    df = kabuk("df -h / | tail -1 | awk '{print $5\" dolu, \"$4\" bos\"}'")
+    bas(f"  Disk: {df}")
+    try:
+        yuzde = int(df.split("%")[0])
+        if yuzde > 85:
+            bas("     🔴 %85 ustu — Dosya-1/2/3 yazamayabilir (her eksik dosya 5 ceza)")
+            eksik.append("disk dolu")
+    except Exception:  # noqa: BLE001
+        pass
+
+    # 6) Model dosyasi
+    for yol in ("~/girdap-ida-algi/models/best.pt", "~/best.pt",
+                "~/girdap_logs/best.pt"):
+        p = os.path.expanduser(yol)
+        if os.path.exists(p):
+            bas(f"  ✅ model bulundu: {yol} ({os.path.getsize(p)/1e6:.1f} MB)")
+            break
+    else:
+        bas("  ⚠ best.pt bulunamadi (blob ayri olabilir) — elle dogrula")
+
+    return eksik
+
+
 # ───────────────────────────── 5. CANLI SİSTEM ─────────────────────────────
 def canli() -> None:
     baslik("5. CANLI SISTEM (ROS kosuyorsa)")
@@ -287,7 +361,12 @@ if __name__ == "__main__":
     c = cupy_kontrol()
     p = planlama_olc()
     opencv_olc()
+    eksik = puan_kontrolleri()
     canli()
     hukum(c, p)
+    if eksik:
+        bas("\n🔴 PUANI SIFIRLAYABILECEK ACIK MADDELER:")
+        for e in eksik:
+            bas(f"   - {e}")
     bas("\nBitti. Ciktinin TAMAMINI kaydet:")
     bas("  python3 arac/jetson_kapasite_olc.py 2>&1 | tee ~/faz0_olcum.txt")
