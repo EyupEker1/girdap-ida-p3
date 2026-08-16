@@ -171,8 +171,33 @@ def _adaylar(maske, renk, a: Ayar):
     return out
 
 
-def hedef_bul(bgr, ayar: Optional[Ayar] = None) -> list:
+def _ortusuyor(a: "Aday", kutu) -> bool:
+    """Aday ile veto kutusu (cx, cy, w, h — piksel) çakışıyor mu?"""
+    bx, by, bw, bh = kutu
+    return (abs(bx - a.cx) < max(bw, a.w) and
+            abs(by - a.cy) < max(bh, a.h) * 1.5)
+
+
+def hedef_bul(bgr, ayar: Optional[Ayar] = None, veto_kutulari=None) -> list:
     """Karedeki P3 hedef dubası adayları (kırmızı/yeşil/siyah).
+
+    `veto_kutulari`: YOLO'nun **kendi dubalarımız** için verdiği kutular
+    (cx, cy, w, h — piksel). Örtüşen aday ELENİR.
+
+    🔑 NEDEN (16.08.2026, ÖLÇÜLDÜ). Stereo yokken boyut kapısı işlevsizdir:
+    menzil Ø0,64 varsayılarak hesaplandığı için yayınlanan çap **daireseldir**,
+    `cap_makul_mu` her adayı geçirir. Geriye tek ayırt edici renk kalıyor ve
+    KIRMIZI ayırmıyor — gölgedeki kendi turuncu kenar dubamız RAL 3026 ile
+    aynı bantta okunuyor (ölçüm: eski boyada %32,4, doğru RAL 2003'te %5,0).
+    Uçtan uca simülasyonda bedeli görüldü: hedefsiz gerçek dizilerde hakem
+    *"kırmızı"* deseydi **6 bloğun 2'sinde YANLIŞ KİLİT** kuruluyordu
+    (yeşil/siyahta 0). Yanlış temas TS3'te 100 → 50 puan.
+
+    Çözüm ölçümle bulundu: gerçek karelerdeki 22 kırmızı adayın **21'i (%95)**
+    YOLO kutusuyla örtüşüyor — yani onlar zaten BİZİM dubalarımız. Ve yeni
+    model P3 hedefini **görmemeyi** öğrendiği (etiketsiz P3 negatifleri) için
+    gerçek hedef bu vetoya takılmaz. İki dedektör birbirini tamamlıyor:
+    YOLO *"bizim duba"*yı bilir, OpenCV hedef rengini bulur.
 
     Boş/geçersiz girişte boş liste — tanı kodu görevi öldürmez.
     """
@@ -185,5 +210,9 @@ def hedef_bul(bgr, ayar: Optional[Ayar] = None) -> list:
                          _maske(hsv, a.kirmizi2_lo, a.kirmizi2_hi, a.morf_px))
     yes = _maske(hsv, a.yesil_lo, a.yesil_hi, a.morf_px)
     siy = _siyah_maske(hsv, a)
-    return (_adaylar(kir, "kirmizi", a) + _adaylar(yes, "yesil", a)
-            + _adaylar(siy, "siyah", a))
+    adaylar = (_adaylar(kir, "kirmizi", a) + _adaylar(yes, "yesil", a)
+               + _adaylar(siy, "siyah", a))
+    if veto_kutulari:
+        adaylar = [d for d in adaylar
+                   if not any(_ortusuyor(d, k) for k in veto_kutulari)]
+    return adaylar

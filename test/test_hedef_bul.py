@@ -105,3 +105,31 @@ def test_kod_sozlesmesi_renk_kodu_ile_ayni():
     Ayrışırsa İHA '3' der, İDA başka rengi avlar — ve bu SESSİZ olur."""
     from p3_hedef.hedef_bul import KOD
     assert KOD == {"kirmizi": 1, "yesil": 2, "siyah": 3}
+
+
+# ── YOLO VETOSU (16.08.2026) ───────────────────────────────────────────────
+def test_yolo_vetosu_kendi_dubamizi_eler():
+    """Stereo yokken boyut kapısı işlevsiz; kırmızı ayırmıyor (gölgedeki
+    turuncumuz RAL 3026 bandında okunuyor). Uçtan uca simülasyonda hakem
+    'kırmızı' deseydi 6 bloğun 2'sinde YANLIŞ KİLİT kuruluyordu.
+    Ölçüm: gerçek karelerdeki kırmızı adayların **%95'i** YOLO kutusuyla
+    örtüşüyor — onlar bizim dubalarımız."""
+    im = _kare(KIRMIZI)
+    a = hedef_bul(im)
+    assert any(x.renk == "kirmizi" for x in a)
+    hedef = next(x for x in a if x.renk == "kirmizi")
+    veto = [(hedef.cx, hedef.cy, hedef.w, hedef.h)]
+    assert not hedef_bul(im, veto_kutulari=veto), "YOLO kutusuyla ortusen aday elenmeli"
+
+
+def test_yolo_vetosu_UZAKTAKI_hedefi_elemez():
+    """Gerçek hedef YOLO kutusuyla örtüşmez (model onu görmemeyi öğrendi)."""
+    im = _kare(YESIL, merkez=(360, 250))
+    uzak_veto = [(60.0, 250.0, 40.0, 40.0)]      # baska yerde bir duba
+    assert any(x.renk == "yesil" for x in hedef_bul(im, veto_kutulari=uzak_veto))
+
+
+def test_veto_verilmezse_davranis_AYNI():
+    """Geri uyum: veto yoksa eski davranış bit birebir."""
+    im = _kare(YESIL)
+    assert len(hedef_bul(im)) == len(hedef_bul(im, veto_kutulari=None))
