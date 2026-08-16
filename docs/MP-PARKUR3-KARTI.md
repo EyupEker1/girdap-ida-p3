@@ -10,7 +10,7 @@
 
 ## 2. Renk yükleme — KALKIŞTAN ÖNCE
 - [ ] İHA rengi bulur → operatör İDA'ya girer:
-      `ros2 param set /perception_camera_node kamikaze_target_color <renk>`
+      `ros2 param set /kamikaze_param_node kamikaze_target_color <renk>`
       kabul edilenler: `kirmizi` · `yesil` · `siyah`
 - [ ] Yüklendiğini doğrula: log'da `PARKUR-3 hedef rengi = <renk> (kod N)`
       kod eşlemesi: **1=kırmızı · 2=yeşil · 3=siyah**
@@ -34,10 +34,3 @@ ileri komut var + ilerleme yok         →  TAMAMLANDI (temas)
 - [ ] Renk parametresi dolu
 - [ ] Görev listesinde RTL yok
 - [ ] `sudo systemctl enable --now girdap-algi` yapıldı (yoksa **P1+P2 sıfır**)
-
----
-🔴 **AÇIK MADDE (16.08.2026):** `kamikaze_target_color` parametresini barındıran
-tek node `perception_camera_node` idi ve `camera-buoys-kaldirildi` dalında
-silindi. O dal birleştirilirse **§2'deki komut çalışmaz** — parametre sahipsiz
-kalır. Birleştirmeden önce `KamikazeHedefKapisi` başka bir node'a (fsm_node ya
-da planning_node) taşınmalı.
