@@ -133,3 +133,24 @@ def test_veto_verilmezse_davranis_AYNI():
     """Geri uyum: veto yoksa eski davranış bit birebir."""
     im = _kare(YESIL)
     assert len(hedef_bul(im)) == len(hedef_bul(im, veto_kutulari=None))
+
+
+# ── PARKUR-3 KAPISI ────────────────────────────────────────────────────────
+@pytest.mark.parametrize("durum", ["BEKLEMEDE", "PARKUR1", "PARKUR2",
+                                   "TAMAMLANDI", "KILL", "", None])
+def test_p3_disinda_hic_calismaz(durum):
+    """P1/P2'de hedef tespiti anlamsız (`nisan_hedefi` zaten None döner) ⇒
+    hesap yapılıp atılıyordu. Koşmayan kod yanlış pozitif de üretemez."""
+    from p3_hedef.hedef_bul import hedef_bul_p3
+    assert hedef_bul_p3(_kare(YESIL), durum) == []
+
+
+def test_p3te_calisir():
+    from p3_hedef.hedef_bul import hedef_bul_p3
+    assert any(a.renk == "yesil" for a in hedef_bul_p3(_kare(YESIL), "PARKUR3"))
+
+
+def test_kapi_buyuk_TESPITI_ayni_birakir():
+    """Kapı yalnız P3 zincirine; `hedef_bul` (algının kullandığı) DEĞİŞMEZ."""
+    from p3_hedef.hedef_bul import hedef_bul_p3
+    assert len(hedef_bul(_kare(KIRMIZI))) == len(hedef_bul_p3(_kare(KIRMIZI), "PARKUR3"))

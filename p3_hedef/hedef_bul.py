@@ -216,3 +216,33 @@ def hedef_bul(bgr, ayar: Optional[Ayar] = None, veto_kutulari=None) -> list:
         adaylar = [d for d in adaylar
                    if not any(_ortusuyor(d, k) for k in veto_kutulari)]
     return adaylar
+
+
+# ── PARKUR-3 KAPISI (16.08.2026, Eyüp kararı) ─────────────────────────────
+#: Hedef tespiti YALNIZ bu durumda koşar.
+P3_DURUMU = "PARKUR3"
+
+
+def hedef_bul_p3(bgr, mission_state: str, ayar: Optional[Ayar] = None,
+                 veto_kutulari=None) -> list:
+    """PARKUR-3 dışında **hiç çalışmaz** — boş liste döner.
+
+    🔑 NEDEN KAPI VAR:
+      · P1/P2'de hedef tespiti **anlamsız**: `nisan_hedefi` zaten PARKUR3 dışında
+        `None` döndürüyor ⇒ hesap yapılıp atılıyordu. CPU bedava değil
+        (Jetson'da 15-23 ms/kare ölçülmüştü).
+      · Yüzey daralır: koşmayan kod yanlış pozitif üretemez.
+
+    🔴 KARIŞTIRILMAMASI GEREKEN ŞEY: **büyük cisim süzgeci kapıya TABİ DEĞİL.**
+    O, algı tarafında `/perception/buoys`'u korur ve **her zaman açıktır** —
+    çünkü Ø64 cm hedef 25 m'den 7,7 px eder, yani tekne daha **Parkur-2'nin
+    içindeyken** hedefi görür; süzülmezse füzyon `EdgeBuoyMemory`'ye KALICI
+    kenar kaydı açar (orada unutma yok) → hayalet kapı → P2 rotası bozulur.
+    (Eyüp'ün gözlemi: *"parkurlar tek yön değil, P1'deyken P3'ün dubasını da
+    görebiliriz."*)
+
+    ⇒ Kapı YALNIZ hedef tespiti/nişan zincirine uygulanır.
+    """
+    if (mission_state or "").strip().upper() != P3_DURUMU:
+        return []
+    return hedef_bul(bgr, ayar, veto_kutulari)
