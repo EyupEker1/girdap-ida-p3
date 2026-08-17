@@ -9,6 +9,33 @@ eklemek **çalışan dağıtımı riske atar**. Bu repo `IDA_GIT` aynasına DAH�
 🟡 Çekirdek mantık yazıldı ve test edildi (26 test, mutasyonla doğrulandı).
 🔴 Sahaya çıkmadan önce kapatılması gerekenler README sonunda.
 
+### ✅ 17.08.2026 — `hedef_bul.py` ARTIK ENTEGRE
+`p3_hedef/hedef_bul.py` **algı node'una bağlandı**: `girdap-ida-algi`
+(→ `IDA_GIT/son_kodv2/algi`) içine **kopyalandı** ve
+`duba_gecis_navigator._p3_opencv_adaylari` tarafından çağrılıyor; çıktı
+`/perception/targets`. Daha önce bu dosyayı **hiçbir node çağırmıyordu**.
+
+🔴 **BU DOSYA KANONİK KAYNAKTIR.** Değişiklik burada yapılır, sonra kopya
+(`girdap_ida_algi/p3_hedef_bul.py`) yenilenir ve başlığındaki sha256 güncellenir.
+Orada `test_kopya_kanonik_kaynakla_AYNI` ayrışmayı yakalar (bu repo o makinede
+yoksa SKIP eder). Şu anki kanonik sha256:
+`191d29466097e0ba334e2f612f575a2962daae960f5dc5fc1d639dac8930dd6b`
+
+Neden kopya, `import p3_hedef` değil: Jetson'da bu repo **kurulu bir paket
+değil** ve sahada internet/pip **yok** (md 4.1) ⇒ tek `git pull` ile gelen kod
+çalışmak zorunda; `sys.path`'e elle dizin eklemek "kurulum adımı unutulursa P3
+sessizce ölür" demekti.
+
+📏 **Entegrasyon ölçümleri (17.08, 240 gerçek göl karesi, 512×512, hedef YOK):**
+kare başına yanlış aday **vetosuz 0,267 → YOLO vetolu 0,212** ·
+`kırmızı 3→0` · `siyah 8→2` · **`yeşil 53→49`**. Maliyet **7,61 ms/kare**
+(2 Hz'te koşuyor). 🔴 Yeşil yanlış adayların kaynağı **kıyı bitkisinin su
+yüzeyindeki yansıması** (gözle doğrulandı); veto/konum/boyut ayırmıyor
+⇒ hakem *"yeşil"* derse yanlış kilit riski en yüksek. Eşikler bilerek
+değiştirilmedi — bkz. aşağıdaki süpürme tablosu (0,55→0,62 yanlışı 3 kat
+keser, **bulmayı %88→%73 düşürür**); gerçek hedef karesi olmadan bu takas
+tek taraflı verilmez.
+
 ## Kritik karar: **renk aday üretir, BOYUT karar verir**
 10.08.2026 ölçümleri (gerçek veri, 2.087 kare / 5.166 kutu):
 
